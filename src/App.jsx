@@ -335,10 +335,13 @@ function App() {
     if (!result) return;
     const blob = new Blob([result.formattedContent], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
     link.download = result.fileName || fileName;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(link.href);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     setNotice('File downloaded');
   }
 
@@ -675,7 +678,7 @@ function App() {
             <span>{busy ? 'Processing...' : isFormatter ? 'Format document' : toolDetails.label}</span>
           </button>
         </div>
-        <div className="workspace-bottom"><span>JSON <i /> HTML <i /> XML <i /> MARKDOWN</span><span>LOCAL INPUT <i /> NO FILES STORED</span></div>
+        <div className="workspace-bottom"><span>JSON <i /> HTML <i /> XML <i /> MARKDOWN <i /> YAML</span><span>LOCAL INPUT <i /> NO FILES STORED</span></div>
       </main>
     </div>
   );

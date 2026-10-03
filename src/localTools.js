@@ -343,7 +343,15 @@ export async function processLocally({
     if (jwtAction === 'encode') {
       formattedContent = await signJwt(content, jwtHeader, jwtKey, jwtOptions);
       outputFileName = 'signed-jwt.txt';
-      const jwtInfo = await inspectJwt(formattedContent, jwtKey, jwtOptions);
+      const decoded = decodeJwt(formattedContent);
+      const jwtInfo = {
+        ...decoded,
+        verification: {
+          status: 'signed',
+          message: `Created with ${decoded.header.alg}. Verify the signature using its corresponding verification key.`,
+        },
+        claimChecks: getClaimChecks(decoded.payload, jwtOptions.expectedIssuer, jwtOptions.expectedAudience),
+      };
       return {
         formattedContent,
         fileName: outputFileName,
