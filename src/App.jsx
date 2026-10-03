@@ -243,6 +243,23 @@ function App() {
     setNotice('');
   }
 
+  function clearInput() {
+    updateContent('');
+    if (isFormatter) setFileName(`untitled.${activeFormat.extension}`);
+    setNotice('Input and result cleared');
+  }
+
+  function handleEditorKeyDown(event) {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      processDocument();
+    } else if (event.shiftKey && event.key.toLowerCase() === 'x') {
+      event.preventDefault();
+      clearInput();
+    }
+  }
+
   function toggleTheme() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
@@ -333,16 +350,20 @@ function App() {
 
   function downloadOutput() {
     if (!result) return;
-    const blob = new Blob([result.formattedContent], { type: 'text/plain;charset=utf-8' });
-    const link = document.createElement('a');
-    const objectUrl = URL.createObjectURL(blob);
-    link.href = objectUrl;
-    link.download = result.fileName || fileName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    setNotice('File downloaded');
+    try {
+      const blob = new Blob([result.formattedContent], { type: 'text/plain;charset=utf-8' });
+      const link = document.createElement('a');
+      const objectUrl = URL.createObjectURL(blob);
+      link.href = objectUrl;
+      link.download = result.fileName || fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setNotice('Download started');
+    } catch (downloadError) {
+      setError(downloadError instanceof Error ? `Could not start the download: ${downloadError.message}` : 'Could not start the download.');
+    }
   }
 
   async function loadFile(event) {
@@ -364,6 +385,7 @@ function App() {
       setContent(fileContent);
       setResult(null);
       setError('');
+      setNotice(`Loaded ${file.name}`);
       setOutputMode(matchingFormat.id === 'html' || matchingFormat.id === 'markdown'
         ? 'preview'
         : matchingFormat.id === 'json' || matchingFormat.id === 'xml' ? 'tree' : 'source');
@@ -504,7 +526,7 @@ function App() {
                 <span className="panel-caption">{isFormatter ? 'Paste or write your document' : toolDetails.label}</span>
               </div>
               <div className="panel-tools">
-                <button className="icon-button" type="button" aria-label="Clear input" title="Clear input" onClick={() => { updateContent(''); setFileName(`untitled.${activeFormat.extension}`); }} disabled={!content}>
+                <button className="icon-button" type="button" aria-label="Clear input and result" aria-keyshortcuts="Control+Shift+X Meta+Shift+X" title="Clear input and result (Ctrl/⌘+Shift+X)" onClick={clearInput} disabled={!content}>
                   <Trash2 size={15} />
                 </button>
               </div>
@@ -532,6 +554,8 @@ function App() {
               placeholder={toolDetails.placeholder}
               value={content}
               onChange={(event) => updateContent(event.target.value)}
+              onKeyDown={handleEditorKeyDown}
+              aria-keyshortcuts="Control+Enter Meta+Enter Control+Shift+X Meta+Shift+X"
             />
             {toolMode === 'jwtDecode' && jwtAction === 'encode' && (
               <div className="jwt-extra-fields">
@@ -673,9 +697,10 @@ function App() {
           <div className="feedback" aria-live="polite">
             {error ? <><CircleAlert size={15} /><span>{error}</span></> : notice ? <><Check size={15} /><span>{notice}</span></> : <span className="quiet-feedback">{toolMode === 'jwtDecode' ? 'Decode, sign, verify signatures, and inspect registered claims locally' : toolMode === 'base64Encode' ? 'Encodes as unpadded Base64 URL-safe text' : toolMode === 'base64Decode' ? 'Decodes Base64 URL-safe text' : supportsPreview ? 'Preview is isolated in a sandbox' : 'Source is formatted locally in your browser'}</span>}
           </div>
-          <button className="button button-primary process-button" type="button" onClick={processDocument} disabled={busy || !content.trim()}>
+          <button className="button button-primary process-button" type="button" onClick={processDocument} disabled={busy || !content.trim()} aria-keyshortcuts="Control+Enter Meta+Enter" title="Process input (Ctrl/⌘+Enter)">
             {busy ? <LoaderCircle size={16} className="spinner" /> : <Sparkles size={16} />}
             <span>{busy ? 'Processing...' : isFormatter ? 'Format document' : toolDetails.label}</span>
+            {!busy && <kbd>Ctrl/⌘ + Enter</kbd>}
           </button>
         </div>
         <div className="workspace-bottom"><span>JSON <i /> HTML <i /> XML <i /> MARKDOWN <i /> YAML</span><span>LOCAL INPUT <i /> NO FILES STORED</span></div>

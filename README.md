@@ -13,6 +13,7 @@ All tools run in the browser. No backend service or API configuration is require
 - Inspect registered JWT claims and optionally check expected issuer and audience values. Decoding alone does not verify signatures or make claims trustworthy.
 - Encode and decode UTF-8 text using unpadded Base64 URL-safe encoding.
 - Copy results, download output, and process inputs up to 1 MiB.
+- While focused in the editor, press `Ctrl/⌘+Enter` to process input or `Ctrl/⌘+Shift+X` to clear the input and result.
 - Switch between light and dark appearance; the selected theme is remembered in this browser.
 
 JWT keys and tokens are held only in app memory and are not sent to a server or saved by the app. Signature verification does not automatically validate application-specific claims; use the Claims breakdown and set expected issuer and audience values where appropriate. Browser cryptography support can vary by algorithm.
@@ -31,4 +32,10 @@ Open the local URL printed by Vite. Build and preview the production app with:
 ```powershell
 npm run build
 npm run preview
+```
+
+Run the local processing regression tests with:
+
+```powershell
+npm test
 ```

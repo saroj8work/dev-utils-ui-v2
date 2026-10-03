@@ -165,6 +165,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
 .button:disabled { opacity: .47; cursor: not-allowed; }
 .button-small { height: 33px; padding: 0 12px; font-size: 11px; }
 .process-button { min-width: 174px; height: 42px; padding: 0 18px; font-size: 12px; }
+.process-button kbd { padding: 3px 5px; color: #d4e5da; background: #ffffff20; border: 1px solid #ffffff35; border-radius: 3px; font: 9px var(--mono); white-space: nowrap; }
 .workspace-bottom { display: flex; justify-content: space-between; margin-top: 34px; padding-top: 13px; border-top: 1px solid #dce2da; color: #8d9a90; font: 8px var(--mono); letter-spacing: .06em; }
 .workspace-bottom i { display: inline-block; width: 3px; height: 3px; margin: 0 7px 2px; background: #a4b394; border-radius: 50%; }
 
