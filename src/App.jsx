@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Braces,
   Check,
@@ -21,6 +21,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { processLocally } from './localTools.js';
+import { getSeoPage, renderSeoContent, SEO_PAGES } from './seoPages.js';
 
 const MAX_BYTES = 1_048_576;
 const FORMATS = [
@@ -49,6 +50,35 @@ function getPreviewDocument(markup) {
     code{padding:2px 4px;border-radius:3px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #dce3dd;padding:8px 10px;text-align:left}
     img{max-width:100%;height:auto}hr{border:0;border-top:1px solid #dce3dd;margin:24px 0}
   </style></head><body>${markup}</body></html>`;
+}
+
+function updatePageMetadata(page) {
+  document.title = page.title;
+  const description = document.querySelector('meta[name="description"]');
+  if (description) description.content = page.description;
+  const seoContent = document.getElementById('seo-content-container');
+  if (seoContent) seoContent.innerHTML = renderSeoContent(page);
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = `${window.location.origin}${page.route}`;
+  for (const property of ['og:title', 'og:description']) {
+    const meta = document.querySelector(`meta[property="${property}"]`);
+    if (meta) meta.content = property === 'og:title' ? page.title : page.description;
+  }
+}
+
+function navigateToPage(page) {
+  if (window.location.pathname !== page.route) {
+    window.history.pushState({}, '', page.route);
+  }
+  updatePageMetadata(page);
+}
+
+function getFormatPage(format) {
+  return SEO_PAGES.find((page) => page.format === format);
+}
+
+function getToolPage(toolMode) {
+  return SEO_PAGES.find((page) => page.toolMode === toolMode);
 }
 
 function createJsonTree(value, label = '$', id = 'json-root') {
@@ -185,9 +215,10 @@ function TreeNode({ node, expandedNodes, setExpandedNodes }) {
 }
 
 function App() {
+  const initialPage = getSeoPage(window.location.pathname);
   const [theme, setTheme] = useState(getInitialTheme);
-  const [toolMode, setToolMode] = useState('format');
-  const [format, setFormat] = useState('json');
+  const [toolMode, setToolMode] = useState(initialPage.toolMode || 'format');
+  const [format, setFormat] = useState(initialPage.format || 'json');
   const [fileName, setFileName] = useState('untitled.json');
   const [content, setContent] = useState('');
   const [result, setResult] = useState(null);
@@ -203,6 +234,29 @@ function App() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    document.body.dataset.theme = theme;
+  }, [theme]);
+
+  useEffect(() => {
+    function restorePageFromHistory() {
+      const page = getSeoPage(window.location.pathname);
+      setToolMode(page.toolMode || 'format');
+      setFormat(page.format || 'json');
+      setResult(null);
+      setError('');
+      setNotice('');
+      setOutputMode(page.format === 'html' || page.format === 'markdown'
+        ? 'preview'
+        : page.format === 'json' || page.format === 'xml' ? 'tree' : 'source');
+      updatePageMetadata(page);
+    }
+
+    window.addEventListener('popstate', restorePageFromHistory);
+    updatePageMetadata(initialPage);
+    return () => window.removeEventListener('popstate', restorePageFromHistory);
+  }, []);
 
   const byteCount = new TextEncoder().encode(content).length;
   const activeFormat = FORMATS.find((item) => item.id === format);
@@ -271,6 +325,8 @@ function App() {
   }
 
   function selectFormat(nextFormat) {
+    const page = getFormatPage(nextFormat);
+    if (page) navigateToPage(page);
     setToolMode('format');
     setFormat(nextFormat);
     setFileName((current) => {
@@ -286,6 +342,8 @@ function App() {
   }
 
   function selectTool(nextTool) {
+    const page = getToolPage(nextTool);
+    if (page) navigateToPage(page);
     setToolMode(nextTool);
     setResult(null);
     setError('');
@@ -382,6 +440,9 @@ function App() {
       const fileContent = await file.text();
       setFileName(file.name);
       setFormat(matchingFormat.id);
+      setToolMode('format');
+      const page = getFormatPage(matchingFormat.id);
+      if (page) navigateToPage(page);
       setContent(fileContent);
       setResult(null);
       setError('');
@@ -458,7 +519,7 @@ function App() {
   return (
     <div className={`app-shell ${theme === 'dark' ? 'dark-mode' : ''}`} data-theme={theme}>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Format Studio home">
+        <a className="brand" href="/" aria-label="Format Studio home">
           <span className="brand-mark"><Braces size={20} strokeWidth={2.2} /></span>
           <span>format<span className="brand-light">studio</span></span>
         </a>
@@ -484,7 +545,7 @@ function App() {
         <div className="page-heading">
           <div>
             <div className="eyebrow">DEVELOPER TOOLKIT <span className="eyebrow-rule" /></div>
-            <h1>Format <span>Studio</span></h1>
+            <div className="page-title">Format <span>Studio</span></div>
           </div>
           <div className="format-count"><span>{String(FORMATS.length).padStart(2, '0')}</span> FORMATS</div>
         </div>

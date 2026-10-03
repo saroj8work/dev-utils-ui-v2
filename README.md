@@ -15,6 +15,7 @@ All tools run in the browser. No backend service or API configuration is require
 - Copy results, download output, and process inputs up to 1 MiB.
 - While focused in the editor, press `Ctrl/⌘+Enter` to process input or `Ctrl/⌘+Shift+X` to clear the input and result.
 - Switch between light and dark appearance; the selected theme is remembered in this browser.
+- Open tool-specific landing pages for the formatters, JWT debugger, and Base64URL utilities. The build emits page-specific titles, descriptions, and crawlable explanatory content.
 
 JWT keys and tokens are held only in app memory and are not sent to a server or saved by the app. Signature verification does not automatically validate application-specific claims; use the Claims breakdown and set expected issuer and audience values where appropriate. Browser cryptography support can vary by algorithm.
 
@@ -39,3 +40,5 @@ Run the local processing regression tests with:
 ```powershell
 npm test
 ```
+
+To generate canonical URLs and a sitemap for production, set `SITE_URL` to the deployed site's origin when building (for example, `https://example.com`). The SEO build emits these only when the variable is set; do not use a preview or localhost URL as the production value.
