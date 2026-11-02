@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Braces,
   Check,
-  ChevronDown,
   CircleAlert,
   Clipboard,
   Code2,
@@ -13,12 +12,15 @@ import {
   FileText,
   FileUp,
   LoaderCircle,
+  Maximize2,
+  Minimize2,
   Moon,
   PanelTop,
   Shrink,
   Sparkles,
   Sun,
   Trash2,
+  WrapText,
 } from 'lucide-react';
 import { processLocally } from './localTools.js';
 import { getSeoPage, renderSeoContent, SEO_PAGES } from './seoPages.js';
@@ -41,14 +43,24 @@ function getInitialTheme() {
   }
 }
 
-function getPreviewDocument(markup) {
+function getPreviewDocument(markup, theme = 'light') {
+  const isDark = theme === 'dark';
+  const bg = isDark ? '#171e19' : '#fff';
+  const fg = isDark ? '#d2ded4' : '#26332d';
+  const headingFg = isDark ? '#eef4ef' : '#26332d';
+  const linkFg = isDark ? '#83bd94' : '#176a4b';
+  const codeBg = isDark ? '#202922' : '#f2f5f1';
+  const border = isDark ? '#354138' : '#dce3dd';
+  const quoteFg = isDark ? '#9db0a0' : '#52635a';
+  const quoteBorder = isDark ? '#3d4d40' : '#c9d6cc';
+
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><style>
-    *{box-sizing:border-box}body{margin:0;padding:28px;color:#26332d;background:#fff;font:15px/1.65 Georgia,serif;overflow-wrap:anywhere}
-    h1,h2,h3,h4,h5,h6{font-family:Arial,sans-serif;line-height:1.2;margin:1.4em 0 .55em}h1{margin-top:0}
-    p,ul,ol,blockquote,pre,table{margin:0 0 1em}a{color:#176a4b}blockquote{border-left:3px solid #c9d6cc;padding-left:16px;color:#52635a}
-    pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#f2f5f1}pre{padding:14px;white-space:pre-wrap;border-radius:4px}
-    code{padding:2px 4px;border-radius:3px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #dce3dd;padding:8px 10px;text-align:left}
-    img{max-width:100%;height:auto}hr{border:0;border-top:1px solid #dce3dd;margin:24px 0}
+    *{box-sizing:border-box}body{margin:0;padding:28px;color:${fg};background:${bg};font:15px/1.65 Georgia,serif;overflow-wrap:anywhere}
+    h1,h2,h3,h4,h5,h6{font-family:Arial,sans-serif;line-height:1.2;margin:1.4em 0 .55em;color:${headingFg}}h1{margin-top:0}
+    p,ul,ol,blockquote,pre,table{margin:0 0 1em}a{color:${linkFg}}blockquote{border-left:3px solid ${quoteBorder};padding-left:16px;color:${quoteFg}}
+    pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:${codeBg}}pre{padding:14px;white-space:pre-wrap;border-radius:4px}
+    code{padding:2px 4px;border-radius:3px}table{border-collapse:collapse;width:100%}th,td{border:1px solid ${border};padding:8px 10px;text-align:left}
+    img{max-width:100%;height:auto}hr{border:0;border-top:1px solid ${border};margin:24px 0}
   </style></head><body>${markup}</body></html>`;
 }
 
@@ -233,9 +245,50 @@ function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [maximizedPanel, setMaximizedPanel] = useState(null);
+  const [isFullWindow, setIsFullWindow] = useState(false);
+  const [wordWrap, setWordWrap] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(30);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const gridRef = useRef(null);
 
   useEffect(() => {
+    if (!isDragging) return;
+
+    function handlePointerMove(event) {
+      if (!gridRef.current) return;
+      const rect = gridRef.current.getBoundingClientRect();
+      const percent = ((event.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.max(15, Math.min(85, Math.round(percent * 10) / 10));
+      setSplitRatio(clamped);
+    }
+
+    function handlePointerUp() {
+      setIsDragging(false);
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [isDragging]);
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        if (maximizedPanel) setMaximizedPanel(null);
+        if (isFullWindow) setIsFullWindow(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [maximizedPanel, isFullWindow]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
     document.body.dataset.theme = theme;
   }, [theme]);
 
@@ -244,6 +297,8 @@ function App() {
       const page = getSeoPage(window.location.pathname);
       setToolMode(page.toolMode || 'format');
       setFormat(page.format || 'json');
+      setMaximizedPanel(null);
+      setIsFullWindow(false);
       setResult(null);
       setError('');
       setNotice('');
@@ -292,9 +347,19 @@ function App() {
 
   function updateContent(value) {
     setContent(value);
-    setResult(null);
-    setError('');
-    setNotice('');
+    if (!value.trim()) {
+      setResult(null);
+      setError('');
+      setNotice('');
+    }
+  }
+
+  function handlePaste(event) {
+    const pasted = event.clipboardData?.getData('text');
+    if (typeof pasted === 'string' && pasted.trim()) {
+      setContent(pasted);
+      processDocument(pasted);
+    }
   }
 
   function clearInput() {
@@ -329,13 +394,18 @@ function App() {
     if (page) navigateToPage(page);
     setToolMode('format');
     setFormat(nextFormat);
+    setMaximizedPanel(null);
     setFileName((current) => {
       const baseName = current.replace(/\.[^.]+$/, '') || 'untitled';
       const extension = FORMATS.find((item) => item.id === nextFormat).extension;
       return `${baseName}.${extension}`;
     });
-    setResult(null);
-    setError('');
+    if (content.trim()) {
+      processDocument(content, nextFormat, 'format');
+    } else {
+      setResult(null);
+      setError('');
+    }
     setOutputMode(nextFormat === 'html' || nextFormat === 'markdown'
       ? 'preview'
       : nextFormat === 'json' || nextFormat === 'xml' ? 'tree' : 'source');
@@ -345,6 +415,8 @@ function App() {
     const page = getToolPage(nextTool);
     if (page) navigateToPage(page);
     setToolMode(nextTool);
+    setMaximizedPanel(null);
+    setIsFullWindow(false);
     setResult(null);
     setError('');
     setNotice('');
@@ -355,26 +427,27 @@ function App() {
       : 'source');
   }
 
-  async function processDocument() {
+  async function processDocument(customContent, customFormat = format, customToolMode = toolMode) {
+    const textToProcess = typeof customContent === 'string' ? customContent : content;
     setError('');
     setNotice('');
-    if (!content.trim() && !(toolMode === 'jwtDecode' && jwtAction === 'encode')) {
-      setError(`Add some content before using the ${toolDetails.label}.`);
+    if (!textToProcess.trim() && !(customToolMode === 'jwtDecode' && jwtAction === 'encode')) {
+      setResult(null);
       return;
     }
-    if (byteCount > MAX_BYTES) {
+    const currentBytes = new TextEncoder().encode(textToProcess).length;
+    if (currentBytes > MAX_BYTES) {
       setError('This input is over the 1 MiB limit.');
       return;
     }
 
     setBusy(true);
-    setResult(null);
     setExpandedNodes({});
     try {
       const nextResult = await processLocally({
-        toolMode,
-        format,
-        content,
+        toolMode: customToolMode,
+        format: customFormat,
+        content: textToProcess,
         fileName,
         jwtAction,
         jwtHeader,
@@ -382,12 +455,12 @@ function App() {
         jwtOptions: { base64UrlSecret: jwtBase64UrlSecret, expectedIssuer, expectedAudience },
       });
       setResult(nextResult);
-      setOutputMode(toolMode === 'format'
-        ? (format === 'html' || format === 'markdown'
+      setOutputMode(customToolMode === 'format'
+        ? (customFormat === 'html' || customFormat === 'markdown'
           ? 'preview'
-          : format === 'json' || format === 'xml' ? 'tree' : 'source')
+          : customFormat === 'json' || customFormat === 'xml' ? 'tree' : 'source')
         : 'source');
-      setNotice(toolMode === 'jwtDecode' && jwtAction === 'encode' ? 'JWT signed locally' : `${toolDetails.label} complete`);
+      setNotice(customToolMode === 'jwtDecode' && jwtAction === 'encode' ? 'JWT signed locally' : `${toolDetails.label} complete`);
     } catch (processingError) {
       setError(processingError instanceof Error ? processingError.message : 'Could not process this input.');
     } finally {
@@ -444,8 +517,7 @@ function App() {
       const page = getFormatPage(matchingFormat.id);
       if (page) navigateToPage(page);
       setContent(fileContent);
-      setResult(null);
-      setError('');
+      processDocument(fileContent, matchingFormat.id, 'format');
       setNotice(`Loaded ${file.name}`);
       setOutputMode(matchingFormat.id === 'html' || matchingFormat.id === 'markdown'
         ? 'preview'
@@ -517,10 +589,10 @@ function App() {
   }
 
   return (
-    <div className={`app-shell ${theme === 'dark' ? 'dark-mode' : ''}`} data-theme={theme}>
+    <div className={`app-shell ${theme === 'dark' ? 'dark-mode' : ''} ${isFormatter ? 'formatter-mode' : ''} ${isFullWindow && isFormatter ? 'full-window-mode' : ''}`} data-theme={theme}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Format Studio home">
-          <span className="brand-mark"><Braces size={20} strokeWidth={2.2} /></span>
+          <span className="brand-mark"><Braces size={15} strokeWidth={2.2} /></span>
           <span>format<span className="brand-light">studio</span></span>
         </a>
         <div className="topbar-right">
@@ -536,20 +608,12 @@ function App() {
             aria-pressed={theme === 'dark'}
             onClick={toggleTheme}
           >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
       </header>
 
       <main className="workspace">
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">DEVELOPER TOOLKIT <span className="eyebrow-rule" /></div>
-            <div className="page-title">Format <span>Studio</span></div>
-          </div>
-          <div className="format-count"><span>{String(FORMATS.length).padStart(2, '0')}</span> FORMATS</div>
-        </div>
-
         <nav className="format-tabs" aria-label="Developer tools">
           {FORMATS.slice(0, 1).map(({ id, label, icon: Icon }) => (
             <button className={`format-tab ${isFormatter && format === id ? 'active' : ''}`} type="button" key={id} aria-pressed={isFormatter && format === id} onClick={() => selectFormat(id)}>
@@ -570,6 +634,15 @@ function App() {
           {isFormatter && <span className="tabs-spacer" />}
           {isFormatter && (
             <>
+              <button
+                className={`subtle-action fullscreen-action ${isFullWindow ? 'active' : ''}`}
+                type="button"
+                onClick={() => setIsFullWindow((current) => !current)}
+                title={isFullWindow ? 'Exit full screen (Esc)' : 'Expand to full screen (100% viewport)'}
+              >
+                {isFullWindow ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                <span>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span>
+              </button>
               <button className="subtle-action upload-action" type="button" onClick={() => fileInputRef.current?.click()}>
                 <FileUp size={15} /><span>Open file</span>
               </button>
@@ -578,7 +651,12 @@ function App() {
           )}
         </nav>
 
-        <section className="editor-grid" aria-label={toolDetails.label}>
+        <section
+          ref={gridRef}
+          className={`editor-grid ${isDragging ? 'is-resizing' : ''} ${maximizedPanel === 'input' ? 'maximized-input' : ''} ${maximizedPanel === 'output' ? 'maximized-output' : ''}`}
+          style={maximizedPanel ? undefined : { gridTemplateColumns: `minmax(140px, ${splitRatio}fr) 12px minmax(140px, ${100 - splitRatio}fr)` }}
+          aria-label={toolDetails.label}
+        >
           <article className={`editor-panel input-panel ${toolMode === 'jwtDecode' ? 'jwt-panel' : ''}`}>
             <div className="panel-heading">
               <div className="panel-title-group">
@@ -587,6 +665,26 @@ function App() {
                 <span className="panel-caption">{isFormatter ? 'Paste or write your document' : toolDetails.label}</span>
               </div>
               <div className="panel-tools">
+                <button
+                  className={`icon-button ${wordWrap ? 'active-icon' : ''}`}
+                  type="button"
+                  aria-label={wordWrap ? 'Disable word wrap (enable horizontal scroll)' : 'Enable word wrap'}
+                  title={wordWrap ? 'Word wrap: ON (click for horizontal scroll)' : 'Word wrap: OFF (click to wrap lines)'}
+                  onClick={() => setWordWrap((current) => !current)}
+                >
+                  <WrapText size={15} />
+                </button>
+                {isFormatter && (
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
+                    title={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
+                    onClick={() => setMaximizedPanel((current) => current === 'input' ? null : 'input')}
+                  >
+                    {maximizedPanel === 'input' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                  </button>
+                )}
                 <button className="icon-button" type="button" aria-label="Clear input and result" aria-keyshortcuts="Control+Shift+X Meta+Shift+X" title="Clear input and result (Ctrl/⌘+Shift+X)" onClick={clearInput} disabled={!content}>
                   <Trash2 size={15} />
                 </button>
@@ -608,13 +706,15 @@ function App() {
             <label className="visually-hidden" htmlFor="document-input">{toolDetails.input}</label>
             <textarea
               id="document-input"
-              className="code-input"
+              className={`code-input ${wordWrap ? 'wrap' : 'nowrap'}`}
+              wrap={wordWrap ? 'soft' : 'off'}
               spellCheck="false"
               autoCapitalize="off"
               autoCorrect="off"
               placeholder={toolDetails.placeholder}
               value={content}
               onChange={(event) => updateContent(event.target.value)}
+              onPaste={handlePaste}
               onKeyDown={handleEditorKeyDown}
               aria-keyshortcuts="Control+Enter Meta+Enter Control+Shift+X Meta+Shift+X"
             />
@@ -665,7 +765,17 @@ function App() {
             {toolMode === 'jwtDecode' && <p className="utility-warning">Tokens and keys stay in this browser. Verification needs the matching key; never trust claims until verification succeeds.</p>}
           </article>
 
-          <div className="process-rail" aria-hidden="true"><span><ChevronDown size={17} /></span></div>
+          <div
+            className={`process-rail ${isDragging ? 'dragging' : ''}`}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDoubleClick={() => setSplitRatio(30)}
+            title="Drag to resize (Double-click to reset to 30% / 70%)"
+          >
+            <div className="rail-handle" />
+          </div>
 
           <article className={`editor-panel output-panel ${toolMode === 'jwtDecode' ? 'jwt-panel' : ''}`}>
             <div className="panel-heading output-heading">
@@ -675,6 +785,26 @@ function App() {
                 {result && <span className="success-label"><Check size={12} /> Ready</span>}
               </div>
               <div className="panel-tools output-tools">
+                <button
+                  className={`icon-button ${wordWrap ? 'active-icon' : ''}`}
+                  type="button"
+                  aria-label={wordWrap ? 'Disable word wrap (enable horizontal scroll)' : 'Enable word wrap'}
+                  title={wordWrap ? 'Word wrap: ON (click for horizontal scroll)' : 'Word wrap: OFF (click to wrap lines)'}
+                  onClick={() => setWordWrap((current) => !current)}
+                >
+                  <WrapText size={15} />
+                </button>
+                {isFormatter && (
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
+                    title={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
+                    onClick={() => setMaximizedPanel((current) => current === 'output' ? null : 'output')}
+                  >
+                    {maximizedPanel === 'output' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                  </button>
+                )}
                 <button className="icon-button" type="button" aria-label="Copy result" title="Copy result" onClick={copyOutput} disabled={!result}><Clipboard size={15} /></button>
                 <button className="icon-button" type="button" aria-label="Download formatted file" title="Download formatted file" onClick={downloadOutput} disabled={!result}><Download size={15} /></button>
               </div>
@@ -723,10 +853,10 @@ function App() {
                       <strong>{jwtAction === 'encode' ? 'Token signed locally' : result.jwtInfo.verification.status === 'valid' ? 'Signature verified' : result.jwtInfo.verification.status === 'invalid' ? 'Signature invalid' : 'Signature not verified'}</strong>
                       <span>{result.jwtInfo.verification.message}</span>
                     </div>
-                    <pre className="code-output"><code>{result.formattedContent}</code></pre>
+                    <pre className={`code-output ${wordWrap ? 'wrap' : 'nowrap'}`}><code>{result.formattedContent}</code></pre>
                   </div>
                 ) : supportsPreview && outputMode === 'preview' ? (
-                  <iframe className="preview-frame" title={`${activeFormat.label} rendered preview`} sandbox="" srcDoc={getPreviewDocument(result.previewHtml)} />
+                  <iframe className="preview-frame" title={`${activeFormat.label} rendered preview`} sandbox="" srcDoc={getPreviewDocument(result.previewHtml, theme)} />
                 ) : outputMode === 'tree' && supportsTree ? (
                   structuredTree.error ? (
                     <div className="tree-error">Could not display the tree: {structuredTree.error}. Switch to Source to view the formatted text.</div>
@@ -736,7 +866,7 @@ function App() {
                     </div>
                   )
                 ) : (
-                  <pre className="code-output"><code>{result.formattedContent}</code></pre>
+                  <pre className={`code-output ${wordWrap ? 'wrap' : 'nowrap'}`}><code>{result.formattedContent}</code></pre>
                 )
               ) : (
                 <div className="empty-result">
@@ -758,11 +888,7 @@ function App() {
           <div className="feedback" aria-live="polite">
             {error ? <><CircleAlert size={15} /><span>{error}</span></> : notice ? <><Check size={15} /><span>{notice}</span></> : <span className="quiet-feedback">{toolMode === 'jwtDecode' ? 'Decode, sign, verify signatures, and inspect registered claims locally' : toolMode === 'base64Encode' ? 'Encodes as unpadded Base64 URL-safe text' : toolMode === 'base64Decode' ? 'Decodes Base64 URL-safe text' : supportsPreview ? 'Preview is isolated in a sandbox' : 'Source is formatted locally in your browser'}</span>}
           </div>
-          <button className="button button-primary process-button" type="button" onClick={processDocument} disabled={busy || !content.trim()} aria-keyshortcuts="Control+Enter Meta+Enter" title="Process input (Ctrl/⌘+Enter)">
-            {busy ? <LoaderCircle size={16} className="spinner" /> : <Sparkles size={16} />}
-            <span>{busy ? 'Processing...' : isFormatter ? 'Format document' : toolDetails.label}</span>
-            {!busy && <kbd>Ctrl/⌘ + Enter</kbd>}
-          </button>
+          <span className="shortcut-hint"><kbd>Ctrl/⌘ + Enter</kbd> to run</span>
         </div>
         <div className="workspace-bottom"><span>JSON <i /> HTML <i /> XML <i /> MARKDOWN <i /> YAML</span><span>LOCAL INPUT <i /> NO FILES STORED</span></div>
       </main>

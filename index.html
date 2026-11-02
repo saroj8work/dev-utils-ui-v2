@@ -6,6 +6,32 @@
     <meta name="theme-color" content="#18221e" />
     <meta name="description" content="Format JSON, HTML, XML, YAML, and Markdown, debug JWTs, and use Base64URL tools in your browser." />
     <title>Format Studio</title>
+    <style>
+      html[data-theme='dark'],
+      body[data-theme='dark'] {
+        background-color: #111713;
+        color: #dce5dd;
+      }
+      #root:empty {
+        min-height: 100vh;
+        display: block;
+        background: radial-gradient(ellipse at 50% 0%, #f9faf6 0, #edf0ea 65%);
+      }
+      body[data-theme='dark'] #root:empty {
+        background: radial-gradient(ellipse at 50% 0%, #202a24 0, #111713 68%);
+      }
+      #root:empty + #seo-content-container,
+      body:has(#root:empty) #seo-content-container {
+        display: none;
+      }
+    </style>
+    <script>
+      try {
+        if (localStorage.getItem('format-studio-theme') === 'dark') {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
