@@ -69,6 +69,7 @@ const robotsContent = [
   '',
 ].join('\n');
 await writeFile(resolve(outputDirectory, 'robots.txt'), robotsContent);
+await writeFile(resolve(outputDirectory, '_redirects'), '/* /index.html 200\n');
 
 if (siteUrl) {
   const sitemapUrls = SEO_PAGES.map((page) => `  <url><loc>${siteUrl}${page.route}</loc></url>`).join('\n');

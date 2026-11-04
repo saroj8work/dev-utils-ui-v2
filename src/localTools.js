@@ -300,20 +300,37 @@ async function formatDocument(format, content) {
     parserImports[format](),
     format === 'json' ? import('prettier/plugins/estree') : Promise.resolve(null),
   ]);
+  const plugin = parserModule?.default || parserModule;
   const plugins = format === 'json'
-    ? [parserModule.default, estreeModule.default]
-    : [format === 'xml' ? parserModule.default : parserModule];
+    ? [parserModule?.default || parserModule, estreeModule?.default || estreeModule].filter(Boolean)
+    : [plugin];
   const formattedContent = await prettier.format(content, {
     parser: format,
     plugins,
     tabWidth: 2,
+    ...(format === 'xml' ? { xmlWhitespaceSensitivity: 'ignore' } : {}),
   });
+
+  let previewHtml = formattedContent;
+  if (format === 'markdown') {
+    const { Marked } = await import('marked');
+    const markedInstance = new Marked({ gfm: true, breaks: true });
+    markedInstance.use({
+      renderer: {
+        code({ text, lang }) {
+          if (lang === 'mermaid') {
+            return `<pre class="mermaid">${text}</pre>`;
+          }
+          return false;
+        },
+      },
+    });
+    previewHtml = markedInstance.parse(formattedContent);
+  }
 
   return {
     formattedContent,
-    previewHtml: format === 'markdown'
-      ? (await import('marked')).marked.parse(formattedContent)
-      : formattedContent,
+    previewHtml,
   };
 }
 

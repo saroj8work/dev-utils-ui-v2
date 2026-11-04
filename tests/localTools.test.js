@@ -28,6 +28,13 @@ test('reports invalid JSON as a formatting error', async () => {
   );
 });
 
+test('supports markdown with GFM features and mermaid diagrams', async () => {
+  const content = '# Title\n\n- [x] Task 1\n- [ ] Task 2\n\n```mermaid\ngraph TD\n  A --> B\n```';
+  const result = await processLocally({ toolMode: 'format', format: 'markdown', content });
+  assert.match(result.previewHtml, /<pre class="mermaid">graph TD\s+A --> B<\/pre>/);
+  assert.match(result.previewHtml, /type="checkbox"/);
+});
+
 test('encodes and decodes UTF-8 as unpadded Base64URL', async () => {
   const content = 'Hello, 世界 🌍';
   const encoded = await processLocally({ toolMode: 'base64Encode', content });

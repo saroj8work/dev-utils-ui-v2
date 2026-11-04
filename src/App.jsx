@@ -43,7 +43,54 @@ function getInitialTheme() {
   }
 }
 
+const SAMPLES = {
+  json: '{\n  "name": "Format Studio",\n  "version": "2.0.0",\n  "description": "Client-side developer utilities",\n  "tools": [\n    "json",\n    "html",\n    "xml",\n    "markdown",\n    "yaml"\n  ],\n  "active": true\n}',
+  html: '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <title>Sample Preview</title>\n  <style>\n    body { font-family: sans-serif; padding: 20px; }\n    .hero { background: #eaf2e8; border-radius: 8px; padding: 20px; color: #176a4b; }\n    h1 { margin-top: 0; font-size: 22px; }\n    p { color: #3d5245; font-size: 14px; }\n  </style>\n</head>\n<body>\n  <div class="hero">\n    <h1>Welcome to Format Studio</h1>\n    <p>Local, private developer utilities formatted right in your browser.</p>\n  </div>\n</body>\n</html>',
+  xml: '<?xml version="1.0" encoding="UTF-8"?>\n<catalog>\n  <tool id="format-studio">\n    <name>Format Studio</name>\n    <category>Developer Tools</category>\n    <formats>\n      <format>JSON</format>\n      <format>HTML</format>\n      <format>XML</format>\n      <format>Markdown</format>\n      <format>YAML</format>\n    </formats>\n  </tool>\n</catalog>',
+  markdown: '# Format Studio\n\nFast, client-side formatting and live preview for developers.\n\n## Features\n- [x] **100% Client-Side**: No data is sent to external servers\n- [x] **Multiple Formats**: JSON, HTML, XML, Markdown, YAML\n- [x] **Mermaid Diagrams**: Interactive flowcharts & charts\n- [ ] Offline caching\n\n## Architecture Diagram\n```mermaid\ngraph TD\n  A[User Input] --> B{Local Formatter}\n  B --> C[Interactive Tree]\n  B --> D[Live Preview]\n```\n\n| Format | Viewer | Status |\n| :--- | :--- | :--- |\n| JSON | Tree / Source | Ready |\n| HTML | Live Preview | Ready |\n| Markdown | GFM + Mermaid | Ready |',
+  yaml: 'name: Format Studio\nversion: 2.0.0\nenvironment: production\nserver:\n  host: 0.0.0.0\n  port: 8080\nfeatures:\n  - json-formatter\n  - html-formatter\n  - xml-formatter\n  - markdown-preview\n  - yaml-formatter\n  - jwt-debugger\n  - base64-tools',
+  jwtDecode: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJpc3MiOiJodHRwczovL2F1dGguZXhhbXBsZS5jb20iLCJhdWQiOiJhcGkifQ.YQe8-b80D-l8Xv_zE0J21V6ZcR1vUj4Q6iI6qL7Y1pA',
+  base64Encode: 'Format Studio: 100% Client-side developer tools',
+  base64Decode: 'Rm9ybWF0IFN0dWRpbzogMTAwJSBDbGllbnQtc2lkZSBkZXZlbG9wZXIgdG9vbHM',
+};
+
+const DEFAULT_FILENAMES = {
+  json: 'untitled.json',
+  html: 'untitled.html',
+  xml: 'untitled.xml',
+  markdown: 'untitled.md',
+  yaml: 'untitled.yaml',
+  jwtDecode: 'decoded-jwt.json',
+  base64Encode: 'encoded.txt',
+  base64Decode: 'decoded.txt',
+};
+
+const DEFAULT_OUTPUT_MODES = {
+  json: 'tree',
+  html: 'preview',
+  xml: 'tree',
+  markdown: 'preview',
+  yaml: 'source',
+  jwtDecode: 'source',
+  base64Encode: 'source',
+  base64Decode: 'source',
+};
+
+function getInitialTabDocs() {
+  return {
+    json: { content: '', result: null, fileName: 'untitled.json', error: '', notice: '', outputMode: 'tree' },
+    html: { content: '', result: null, fileName: 'untitled.html', error: '', notice: '', outputMode: 'preview' },
+    xml: { content: '', result: null, fileName: 'untitled.xml', error: '', notice: '', outputMode: 'tree' },
+    markdown: { content: '', result: null, fileName: 'untitled.md', error: '', notice: '', outputMode: 'preview' },
+    yaml: { content: '', result: null, fileName: 'untitled.yaml', error: '', notice: '', outputMode: 'source' },
+    jwtDecode: { content: '', result: null, fileName: 'decoded-jwt.json', error: '', notice: '', outputMode: 'source' },
+    base64Encode: { content: '', result: null, fileName: 'encoded.txt', error: '', notice: '', outputMode: 'source' },
+    base64Decode: { content: '', result: null, fileName: 'decoded.txt', error: '', notice: '', outputMode: 'source' },
+  };
+}
+
 function getPreviewDocument(markup, theme = 'light') {
+  if (!markup) return '';
   const isDark = theme === 'dark';
   const bg = isDark ? '#171e19' : '#fff';
   const fg = isDark ? '#d2ded4' : '#26332d';
@@ -54,14 +101,65 @@ function getPreviewDocument(markup, theme = 'light') {
   const quoteFg = isDark ? '#9db0a0' : '#52635a';
   const quoteBorder = isDark ? '#3d4d40' : '#c9d6cc';
 
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'"><style>
-    *{box-sizing:border-box}body{margin:0;padding:28px;color:${fg};background:${bg};font:15px/1.65 Georgia,serif;overflow-wrap:anywhere}
-    h1,h2,h3,h4,h5,h6{font-family:Arial,sans-serif;line-height:1.2;margin:1.4em 0 .55em;color:${headingFg}}h1{margin-top:0}
-    p,ul,ol,blockquote,pre,table{margin:0 0 1em}a{color:${linkFg}}blockquote{border-left:3px solid ${quoteBorder};padding-left:16px;color:${quoteFg}}
-    pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:${codeBg}}pre{padding:14px;white-space:pre-wrap;border-radius:4px}
-    code{padding:2px 4px;border-radius:3px}table{border-collapse:collapse;width:100%}th,td{border:1px solid ${border};padding:8px 10px;text-align:left}
-    img{max-width:100%;height:auto}hr{border:0;border-top:1px solid ${border};margin:24px 0}
-  </style></head><body>${markup}</body></html>`;
+  const defaultStyles = `
+    *{box-sizing:border-box}
+    body{margin:0;padding:24px;color:${fg};background:${bg};font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow-wrap:anywhere}
+    h1,h2,h3,h4,h5,h6{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.25;margin:1.2em 0 .5em;color:${headingFg}}
+    h1{margin-top:0}
+    p,ul,ol,blockquote,pre,table{margin:0 0 1em}
+    a{color:${linkFg}}
+    blockquote{border-left:3px solid ${quoteBorder};padding-left:16px;color:${quoteFg};margin:1em 0}
+    pre,code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:${codeBg}}
+    pre{padding:14px;white-space:pre-wrap;border-radius:4px;overflow-x:auto}
+    code{padding:2px 4px;border-radius:3px}
+    table{border-collapse:collapse;width:100%;margin:1.2em 0}
+    th,td{border:1px solid ${border};padding:8px 12px;text-align:left}
+    th{background:${isDark ? '#202a23' : '#f0f5ee'};font-weight:600}
+    img{max-width:100%;height:auto}
+    hr{border:0;border-top:1px solid ${border};margin:24px 0}
+    ul:has(input[type="checkbox"]) { list-style: none; padding-left: 4px; }
+    li:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: ${linkFg}; margin: 0; }
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+      background: ${isDark ? '#141c16' : '#f8faf7'};
+      border: 1px solid ${border};
+      border-radius: 6px;
+      margin: 1.5em 0;
+      overflow-x: auto;
+    }
+    .mermaid svg { max-width: 100%; height: auto; }
+  `;
+
+  const hasMermaid = markup.includes('class="mermaid"');
+  const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob: https:; script-src 'unsafe-inline' https://cdn.jsdelivr.net;">`;
+  const themeStyle = `<style>:root{color-scheme:${isDark ? 'dark' : 'light'};}${defaultStyles}</style>`;
+  const mermaidScript = hasMermaid ? `
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      try {
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: '${isDark ? 'dark' : 'default'}',
+          securityLevel: 'loose'
+        });
+      } catch (e) {
+        console.error('Mermaid render error:', e);
+      }
+    </script>
+  ` : '';
+
+  const isFullHtml = /<!DOCTYPE|<html/i.test(markup);
+  if (isFullHtml) {
+    if (/<head[^>]*>/i.test(markup)) {
+      return markup.replace(/(<head[^>]*>)/i, (match) => `${match}<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${cspMeta}${themeStyle}${mermaidScript}`);
+    }
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${cspMeta}${themeStyle}${mermaidScript}</head>${markup}</html>`;
+  }
+
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${cspMeta}${themeStyle}${mermaidScript}</head><body>${markup}</body></html>`;
 }
 
 function updatePageMetadata(page) {
@@ -231,10 +329,7 @@ function App() {
   const [theme, setTheme] = useState(getInitialTheme);
   const [toolMode, setToolMode] = useState(initialPage.toolMode || 'format');
   const [format, setFormat] = useState(initialPage.format || 'json');
-  const [fileName, setFileName] = useState('untitled.json');
-  const [content, setContent] = useState('');
-  const [result, setResult] = useState(null);
-  const [outputMode, setOutputMode] = useState('tree');
+  const [tabDocs, setTabDocs] = useState(getInitialTabDocs);
   const [expandedNodes, setExpandedNodes] = useState({});
   const [jwtAction, setJwtAction] = useState('decode');
   const [jwtHeader, setJwtHeader] = useState('{\n  "alg": "HS256",\n  "typ": "JWT"\n}');
@@ -243,8 +338,6 @@ function App() {
   const [expectedIssuer, setExpectedIssuer] = useState('');
   const [expectedAudience, setExpectedAudience] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const [maximizedPanel, setMaximizedPanel] = useState(null);
   const [isFullWindow, setIsFullWindow] = useState(false);
   const [wordWrap, setWordWrap] = useState(false);
@@ -252,6 +345,15 @@ function App() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const gridRef = useRef(null);
+
+  const activeKey = toolMode === 'format' ? format : toolMode;
+  const currentDoc = tabDocs[activeKey] || tabDocs.json;
+  const content = currentDoc.content || '';
+  const result = currentDoc.result || null;
+  const fileName = currentDoc.fileName || DEFAULT_FILENAMES[activeKey] || 'untitled.txt';
+  const error = currentDoc.error || '';
+  const notice = currentDoc.notice || '';
+  const outputMode = currentDoc.outputMode || DEFAULT_OUTPUT_MODES[activeKey] || 'source';
 
   useEffect(() => {
     if (!isDragging) return;
@@ -299,12 +401,6 @@ function App() {
       setFormat(page.format || 'json');
       setMaximizedPanel(null);
       setIsFullWindow(false);
-      setResult(null);
-      setError('');
-      setNotice('');
-      setOutputMode(page.format === 'html' || page.format === 'markdown'
-        ? 'preview'
-        : page.format === 'json' || page.format === 'xml' ? 'tree' : 'source');
       updatePageMetadata(page);
     }
 
@@ -312,6 +408,15 @@ function App() {
     updatePageMetadata(initialPage);
     return () => window.removeEventListener('popstate', restorePageFromHistory);
   }, []);
+
+  // Debounced auto-formatting while typing
+  useEffect(() => {
+    if (!content.trim()) return;
+    const timer = setTimeout(() => {
+      processDocument(content, format, toolMode, true);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, [content, format, toolMode]);
 
   const byteCount = new TextEncoder().encode(content).length;
   const activeFormat = FORMATS.find((item) => item.id === format);
@@ -328,6 +433,7 @@ function App() {
     base64Encode: { label: 'Base64 URL encoder', input: 'Text to encode', placeholder: 'Enter text to Base64 URL-encode...' },
     base64Decode: { label: 'Base64 URL decoder', input: 'Base64 text to decode', placeholder: 'Paste Base64 URL-encoded text...' },
   }[toolMode];
+
   const structuredTree = useMemo(() => {
     if (!result || !supportsTree) return null;
     try {
@@ -346,26 +452,66 @@ function App() {
   }, [format, result, supportsTree]);
 
   function updateContent(value) {
-    setContent(value);
-    if (!value.trim()) {
-      setResult(null);
-      setError('');
-      setNotice('');
-    }
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        content: value,
+        ...(value.trim() ? {} : { result: null, error: '', notice: '' }),
+      },
+    }));
   }
 
   function handlePaste(event) {
     const pasted = event.clipboardData?.getData('text');
-    if (typeof pasted === 'string' && pasted.trim()) {
-      setContent(pasted);
-      processDocument(pasted);
+    if (typeof pasted === 'string') {
+      event.preventDefault();
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          content: pasted,
+          ...(pasted.trim() ? {} : { result: null, error: '', notice: '' }),
+        },
+      }));
+      if (pasted.trim()) {
+        processDocument(pasted, format, toolMode, false);
+      }
     }
   }
 
+  function loadSample() {
+    const sample = SAMPLES[activeKey];
+    if (!sample) return;
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        content: sample,
+      },
+    }));
+    processDocument(sample, format, toolMode, false);
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        notice: `Loaded ${toolDetails.label} sample`,
+      },
+    }));
+  }
+
   function clearInput() {
-    updateContent('');
-    if (isFormatter) setFileName(`untitled.${activeFormat.extension}`);
-    setNotice('Input and result cleared');
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        content: '',
+        result: null,
+        error: '',
+        notice: 'Input and result cleared',
+        fileName: isFormatter ? `untitled.${activeFormat.extension}` : DEFAULT_FILENAMES[activeKey],
+      },
+    }));
   }
 
   function handleEditorKeyDown(event) {
@@ -385,7 +531,13 @@ function App() {
     try {
       localStorage.setItem('format-studio-theme', nextTheme);
     } catch {
-      setError('Theme changed, but this browser could not save your preference.');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          error: 'Theme changed, but this browser could not save your preference.',
+        },
+      }));
     }
   }
 
@@ -395,20 +547,6 @@ function App() {
     setToolMode('format');
     setFormat(nextFormat);
     setMaximizedPanel(null);
-    setFileName((current) => {
-      const baseName = current.replace(/\.[^.]+$/, '') || 'untitled';
-      const extension = FORMATS.find((item) => item.id === nextFormat).extension;
-      return `${baseName}.${extension}`;
-    });
-    if (content.trim()) {
-      processDocument(content, nextFormat, 'format');
-    } else {
-      setResult(null);
-      setError('');
-    }
-    setOutputMode(nextFormat === 'html' || nextFormat === 'markdown'
-      ? 'preview'
-      : nextFormat === 'json' || nextFormat === 'xml' ? 'tree' : 'source');
   }
 
   function selectTool(nextTool) {
@@ -417,27 +555,65 @@ function App() {
     setToolMode(nextTool);
     setMaximizedPanel(null);
     setIsFullWindow(false);
-    setResult(null);
-    setError('');
-    setNotice('');
-    setOutputMode(nextTool === 'format'
-      ? (format === 'html' || format === 'markdown'
-        ? 'preview'
-        : format === 'json' || format === 'xml' ? 'tree' : 'source')
-      : 'source');
   }
 
-  async function processDocument(customContent, customFormat = format, customToolMode = toolMode) {
-    const textToProcess = typeof customContent === 'string' ? customContent : content;
-    setError('');
-    setNotice('');
+  function setDocOutputMode(mode) {
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        outputMode: mode,
+      },
+    }));
+  }
+
+  function updateFileName(name) {
+    setTabDocs((prev) => ({
+      ...prev,
+      [activeKey]: {
+        ...prev[activeKey],
+        fileName: name,
+      },
+    }));
+  }
+
+  async function processDocument(customContent, customFormat = format, customToolMode = toolMode, isSilent = false) {
+    const targetKey = customToolMode === 'format' ? customFormat : customToolMode;
+    const textToProcess = typeof customContent === 'string' ? customContent : (tabDocs[targetKey]?.content ?? content);
+
+    if (!isSilent) {
+      setTabDocs((prev) => ({
+        ...prev,
+        [targetKey]: {
+          ...prev[targetKey],
+          error: '',
+          notice: '',
+        },
+      }));
+    }
+
     if (!textToProcess.trim() && !(customToolMode === 'jwtDecode' && jwtAction === 'encode')) {
-      setResult(null);
+      setTabDocs((prev) => ({
+        ...prev,
+        [targetKey]: {
+          ...prev[targetKey],
+          result: null,
+        },
+      }));
       return;
     }
+
     const currentBytes = new TextEncoder().encode(textToProcess).length;
     if (currentBytes > MAX_BYTES) {
-      setError('This input is over the 1 MiB limit.');
+      if (!isSilent) {
+        setTabDocs((prev) => ({
+          ...prev,
+          [targetKey]: {
+            ...prev[targetKey],
+            error: 'This input is over the 1 MiB limit.',
+          },
+        }));
+      }
       return;
     }
 
@@ -448,21 +624,39 @@ function App() {
         toolMode: customToolMode,
         format: customFormat,
         content: textToProcess,
-        fileName,
+        fileName: tabDocs[targetKey]?.fileName || fileName,
         jwtAction,
         jwtHeader,
         jwtKey,
         jwtOptions: { base64UrlSecret: jwtBase64UrlSecret, expectedIssuer, expectedAudience },
       });
-      setResult(nextResult);
-      setOutputMode(customToolMode === 'format'
+
+      const defaultMode = customToolMode === 'format'
         ? (customFormat === 'html' || customFormat === 'markdown'
           ? 'preview'
           : customFormat === 'json' || customFormat === 'xml' ? 'tree' : 'source')
-        : 'source');
-      setNotice(customToolMode === 'jwtDecode' && jwtAction === 'encode' ? 'JWT signed locally' : `${toolDetails.label} complete`);
+        : 'source';
+
+      setTabDocs((prev) => ({
+        ...prev,
+        [targetKey]: {
+          ...prev[targetKey],
+          result: nextResult,
+          outputMode: prev[targetKey]?.outputMode || defaultMode,
+          notice: customToolMode === 'jwtDecode' && jwtAction === 'encode' ? 'JWT signed locally' : `${toolDetails.label} complete`,
+          error: '',
+        },
+      }));
     } catch (processingError) {
-      setError(processingError instanceof Error ? processingError.message : 'Could not process this input.');
+      if (!isSilent) {
+        setTabDocs((prev) => ({
+          ...prev,
+          [targetKey]: {
+            ...prev[targetKey],
+            error: processingError instanceof Error ? processingError.message : 'Could not process this input.',
+          },
+        }));
+      }
     } finally {
       setBusy(false);
     }
@@ -473,9 +667,21 @@ function App() {
     const value = outputMode === 'preview' ? result.previewHtml : result.formattedContent;
     try {
       await navigator.clipboard.writeText(value);
-      setNotice(outputMode === 'preview' ? 'Preview markup copied' : isFormatter ? 'Formatted source copied' : 'Result copied');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          notice: outputMode === 'preview' ? 'Preview markup copied' : isFormatter ? 'Formatted source copied' : 'Result copied',
+        },
+      }));
     } catch {
-      setError('Clipboard access is unavailable in this browser.');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          error: 'Clipboard access is unavailable in this browser.',
+        },
+      }));
     }
   }
 
@@ -491,9 +697,21 @@ function App() {
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-      setNotice('Download started');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          notice: 'Download started',
+        },
+      }));
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? `Could not start the download: ${downloadError.message}` : 'Could not start the download.');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          error: downloadError instanceof Error ? `Could not start the download: ${downloadError.message}` : 'Could not start the download.',
+        },
+      }));
     }
   }
 
@@ -505,25 +723,47 @@ function App() {
       || (item.id === 'markdown' && extension === 'markdown')
       || (item.id === 'yaml' && extension === 'yml'));
     if (!matchingFormat) {
-      setError('Choose a JSON, HTML, XML, YAML, or Markdown file.');
+      setTabDocs((prev) => ({
+        ...prev,
+        [activeKey]: {
+          ...prev[activeKey],
+          error: 'Choose a JSON, HTML, XML, YAML, or Markdown file.',
+        },
+      }));
       event.target.value = '';
       return;
     }
     try {
       const fileContent = await file.text();
-      setFileName(file.name);
       setFormat(matchingFormat.id);
       setToolMode('format');
       const page = getFormatPage(matchingFormat.id);
       if (page) navigateToPage(page);
-      setContent(fileContent);
-      processDocument(fileContent, matchingFormat.id, 'format');
-      setNotice(`Loaded ${file.name}`);
-      setOutputMode(matchingFormat.id === 'html' || matchingFormat.id === 'markdown'
+
+      const defaultMode = matchingFormat.id === 'html' || matchingFormat.id === 'markdown'
         ? 'preview'
-        : matchingFormat.id === 'json' || matchingFormat.id === 'xml' ? 'tree' : 'source');
+        : matchingFormat.id === 'json' || matchingFormat.id === 'xml' ? 'tree' : 'source';
+
+      setTabDocs((prev) => ({
+        ...prev,
+        [matchingFormat.id]: {
+          content: fileContent,
+          fileName: file.name,
+          result: null,
+          error: '',
+          notice: `Loaded ${file.name}`,
+          outputMode: defaultMode,
+        },
+      }));
+      processDocument(fileContent, matchingFormat.id, 'format', false);
     } catch (fileError) {
-      setError(fileError instanceof Error ? `Could not read the selected file: ${fileError.message}` : 'Could not read the selected file.');
+      setTabDocs((prev) => ({
+        ...prev,
+        [matchingFormat.id]: {
+          ...prev[matchingFormat.id],
+          error: fileError instanceof Error ? `Could not read the selected file: ${fileError.message}` : 'Could not read the selected file.',
+        },
+      }));
     } finally {
       event.target.value = '';
     }
@@ -538,8 +778,6 @@ function App() {
       iat: 1516239022,
     }, null, 2);
     const header = '{\n  "alg": "HS256",\n  "typ": "JWT"\n}';
-    setError('');
-    setNotice('');
     setBusy(true);
     try {
       const signed = await processLocally({
@@ -561,13 +799,25 @@ function App() {
       setJwtBase64UrlSecret(false);
       setExpectedIssuer('');
       setExpectedAudience('');
-      setContent(signed.formattedContent);
-      setResult(inspected);
-      setError('');
-      setNotice('Verified example loaded. Its secret is public and for demos only.');
-      setOutputMode('source');
+      setTabDocs((prev) => ({
+        ...prev,
+        jwtDecode: {
+          content: signed.formattedContent,
+          result: inspected,
+          fileName: 'decoded-jwt.json',
+          error: '',
+          notice: 'Verified example loaded. Its secret is public and for demos only.',
+          outputMode: 'source',
+        },
+      }));
     } catch (exampleError) {
-      setError(exampleError instanceof Error ? exampleError.message : 'Could not generate the JWT example.');
+      setTabDocs((prev) => ({
+        ...prev,
+        jwtDecode: {
+          ...prev.jwtDecode,
+          error: exampleError instanceof Error ? exampleError.message : 'Could not generate the JWT example.',
+        },
+      }));
     } finally {
       setBusy(false);
     }
@@ -576,20 +826,46 @@ function App() {
   function changeJwtAction(nextAction) {
     if (result?.jwtInfo) {
       if (nextAction === 'encode' && jwtAction === 'decode') {
-        setContent(JSON.stringify(result.jwtInfo.payload, null, 2));
+        const newContent = JSON.stringify(result.jwtInfo.payload, null, 2);
         setJwtHeader(JSON.stringify(result.jwtInfo.header, null, 2));
+        setTabDocs((prev) => ({
+          ...prev,
+          jwtDecode: {
+            ...prev.jwtDecode,
+            content: newContent,
+            result: null,
+            error: '',
+            outputMode: 'source',
+          },
+        }));
       } else if (nextAction === 'decode' && jwtAction === 'encode') {
-        setContent(result.formattedContent);
+        setTabDocs((prev) => ({
+          ...prev,
+          jwtDecode: {
+            ...prev.jwtDecode,
+            content: result.formattedContent,
+            result: null,
+            error: '',
+            outputMode: 'source',
+          },
+        }));
       }
+    } else {
+      setTabDocs((prev) => ({
+        ...prev,
+        jwtDecode: {
+          ...prev.jwtDecode,
+          result: null,
+          error: '',
+          outputMode: 'source',
+        },
+      }));
     }
     setJwtAction(nextAction);
-    setResult(null);
-    setError('');
-    setOutputMode('source');
   }
 
   return (
-    <div className={`app-shell ${theme === 'dark' ? 'dark-mode' : ''} ${isFormatter ? 'formatter-mode' : ''} ${isFullWindow && isFormatter ? 'full-window-mode' : ''}`} data-theme={theme}>
+    <div className={`app-shell ${theme === 'dark' ? 'dark-mode' : ''} ${isFullWindow ? 'full-window-mode' : ''}`} data-theme={theme}>
       <header className="topbar">
         <a className="brand" href="/" aria-label="Format Studio home">
           <span className="brand-mark"><Braces size={15} strokeWidth={2.2} /></span>
@@ -631,24 +907,20 @@ function App() {
           <span className="tool-divider" />
           <button className={`utility-tab ${toolMode === 'base64Encode' ? 'active' : ''}`} type="button" aria-pressed={toolMode === 'base64Encode'} onClick={() => selectTool('base64Encode')}>Base64 encode</button>
           <button className={`utility-tab ${toolMode === 'base64Decode' ? 'active' : ''}`} type="button" aria-pressed={toolMode === 'base64Decode'} onClick={() => selectTool('base64Decode')}>Base64 decode</button>
-          {isFormatter && <span className="tabs-spacer" />}
-          {isFormatter && (
-            <>
-              <button
-                className={`subtle-action fullscreen-action ${isFullWindow ? 'active' : ''}`}
-                type="button"
-                onClick={() => setIsFullWindow((current) => !current)}
-                title={isFullWindow ? 'Exit full screen (Esc)' : 'Expand to full screen (100% viewport)'}
-              >
-                {isFullWindow ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                <span>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span>
-              </button>
-              <button className="subtle-action upload-action" type="button" onClick={() => fileInputRef.current?.click()}>
-                <FileUp size={15} /><span>Open file</span>
-              </button>
-              <input ref={fileInputRef} className="visually-hidden" type="file" accept=".json,.html,.htm,.xml,.md,.markdown,.yaml,.yml" onChange={loadFile} />
-            </>
-          )}
+          <span className="tabs-spacer" />
+          <button
+            className={`subtle-action fullscreen-action ${isFullWindow ? 'active' : ''}`}
+            type="button"
+            onClick={() => setIsFullWindow((current) => !current)}
+            title={isFullWindow ? 'Exit full screen (Esc)' : 'Expand to full screen (100% viewport)'}
+          >
+            {isFullWindow ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{isFullWindow ? 'Exit full screen' : 'Full screen'}</span>
+          </button>
+          <button className="subtle-action upload-action" type="button" onClick={() => fileInputRef.current?.click()}>
+            <FileUp size={15} /><span>Open file</span>
+          </button>
+          <input ref={fileInputRef} className="visually-hidden" type="file" accept=".json,.html,.htm,.xml,.md,.markdown,.yaml,.yml" onChange={loadFile} />
         </nav>
 
         <section
@@ -657,7 +929,7 @@ function App() {
           style={maximizedPanel ? undefined : { gridTemplateColumns: `minmax(140px, ${splitRatio}fr) 12px minmax(140px, ${100 - splitRatio}fr)` }}
           aria-label={toolDetails.label}
         >
-          <article className={`editor-panel input-panel ${toolMode === 'jwtDecode' ? 'jwt-panel' : ''}`}>
+          <article className="editor-panel input-panel">
             <div className="panel-heading">
               <div className="panel-title-group">
                 <span className="panel-index">01</span>
@@ -674,17 +946,15 @@ function App() {
                 >
                   <WrapText size={15} />
                 </button>
-                {isFormatter && (
-                  <button
-                    className="icon-button"
-                    type="button"
-                    aria-label={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
-                    title={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
-                    onClick={() => setMaximizedPanel((current) => current === 'input' ? null : 'input')}
-                  >
-                    {maximizedPanel === 'input' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                  </button>
-                )}
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
+                  title={maximizedPanel === 'input' ? 'Restore split view (Esc)' : 'Maximize input to 100% width'}
+                  onClick={() => setMaximizedPanel((current) => current === 'input' ? null : 'input')}
+                >
+                  {maximizedPanel === 'input' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </button>
                 <button className="icon-button" type="button" aria-label="Clear input and result" aria-keyshortcuts="Control+Shift+X Meta+Shift+X" title="Clear input and result (Ctrl/⌘+Shift+X)" onClick={clearInput} disabled={!content}>
                   <Trash2 size={15} />
                 </button>
@@ -692,9 +962,12 @@ function App() {
             </div>
             <div className="document-bar">
               {isFormatter
-                ? <div className="filename-wrap"><FileJson size={15} /><input aria-label="Document filename" value={fileName} onChange={(event) => setFileName(event.target.value)} /></div>
+                ? <div className="filename-wrap"><FileJson size={15} /><input aria-label="Document filename" value={fileName} onChange={(event) => updateFileName(event.target.value)} /></div>
                 : <span className="utility-input-label">{toolDetails.input}</span>}
-              <span className="format-chip">{isFormatter ? activeFormat.label : toolMode === 'jwtDecode' ? 'JWT' : 'BASE64 URL'}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button type="button" className="subtle-action" onClick={loadSample} title={`Load sample ${toolDetails.label}`}>Sample</button>
+                <span className="format-chip">{isFormatter ? activeFormat.label : toolMode === 'jwtDecode' ? 'JWT' : 'BASE64 URL'}</span>
+              </div>
             </div>
             {toolMode === 'jwtDecode' && (
               <div className="jwt-mode-bar" role="tablist" aria-label="JWT mode">
@@ -777,7 +1050,7 @@ function App() {
             <div className="rail-handle" />
           </div>
 
-          <article className={`editor-panel output-panel ${toolMode === 'jwtDecode' ? 'jwt-panel' : ''}`}>
+          <article className="editor-panel output-panel">
             <div className="panel-heading output-heading">
               <div className="panel-title-group">
                 <span className="panel-index">02</span>
@@ -794,27 +1067,25 @@ function App() {
                 >
                   <WrapText size={15} />
                 </button>
-                {isFormatter && (
-                  <button
-                    className="icon-button"
-                    type="button"
-                    aria-label={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
-                    title={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
-                    onClick={() => setMaximizedPanel((current) => current === 'output' ? null : 'output')}
-                  >
-                    {maximizedPanel === 'output' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                  </button>
-                )}
+                <button
+                  className="icon-button"
+                  type="button"
+                  aria-label={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
+                  title={maximizedPanel === 'output' ? 'Restore split view (Esc)' : 'Maximize output to 100% width'}
+                  onClick={() => setMaximizedPanel((current) => current === 'output' ? null : 'output')}
+                >
+                  {maximizedPanel === 'output' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                </button>
                 <button className="icon-button" type="button" aria-label="Copy result" title="Copy result" onClick={copyOutput} disabled={!result}><Clipboard size={15} /></button>
                 <button className="icon-button" type="button" aria-label="Download formatted file" title="Download formatted file" onClick={downloadOutput} disabled={!result}><Download size={15} /></button>
               </div>
             </div>
             <div className="result-bar">
               <div className="view-switch" role="tablist" aria-label="Result view">
-                {supportsPreview && <button className={outputMode === 'preview' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'preview'} onClick={() => setOutputMode('preview')}><PanelTop size={14} /> Preview</button>}
-                <button className={outputMode === 'source' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'source'} onClick={() => setOutputMode('source')}><Code2 size={14} /> Source</button>
-                {supportsTree && <button className={outputMode === 'tree' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'tree'} onClick={() => setOutputMode('tree')}><Braces size={14} /> Tree</button>}
-                {toolMode === 'jwtDecode' && jwtAction === 'decode' && result?.jwtInfo && <button className={outputMode === 'claims' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'claims'} onClick={() => setOutputMode('claims')}>Claims breakdown</button>}
+                {supportsPreview && <button className={outputMode === 'preview' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'preview'} onClick={() => setDocOutputMode('preview')}><PanelTop size={14} /> Preview</button>}
+                <button className={outputMode === 'source' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'source'} onClick={() => setDocOutputMode('source')}><Code2 size={14} /> Source</button>
+                {supportsTree && <button className={outputMode === 'tree' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'tree'} onClick={() => setDocOutputMode('tree')}><Braces size={14} /> Tree</button>}
+                {toolMode === 'jwtDecode' && jwtAction === 'decode' && result?.jwtInfo && <button className={outputMode === 'claims' ? 'selected' : ''} type="button" role="tab" aria-selected={outputMode === 'claims'} onClick={() => setDocOutputMode('claims')}>Claims breakdown</button>}
               </div>
               {outputMode === 'tree' && supportsTree && result && structuredTree?.tree ? (
                 <div className="tree-actions">
@@ -856,7 +1127,7 @@ function App() {
                     <pre className={`code-output ${wordWrap ? 'wrap' : 'nowrap'}`}><code>{result.formattedContent}</code></pre>
                   </div>
                 ) : supportsPreview && outputMode === 'preview' ? (
-                  <iframe className="preview-frame" title={`${activeFormat.label} rendered preview`} sandbox="" srcDoc={getPreviewDocument(result.previewHtml, theme)} />
+                  <iframe className="preview-frame" title={`${activeFormat.label} rendered preview`} sandbox="allow-scripts allow-same-origin allow-popups" srcDoc={getPreviewDocument(result.previewHtml, theme)} />
                 ) : outputMode === 'tree' && supportsTree ? (
                   structuredTree.error ? (
                     <div className="tree-error">Could not display the tree: {structuredTree.error}. Switch to Source to view the formatted text.</div>
